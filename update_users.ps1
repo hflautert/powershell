@@ -23,8 +23,7 @@ $total_desativados=0
 
 # Dados email
 $mFrom="no-reply@fimfim.epagri.sc.gov.br"
-#$mTo="redes@epagri.sc.gov.br"
-$mTo="hflautert@gmail.com"
+$mTo="redes@epagri.sc.gov.br"
 $mCc="henrique.lautert@ilhaservice.com.br"
 $mSubject="Resultado da sincronização Oracle-AD"
 $mBody=""
@@ -200,7 +199,7 @@ $mBody=$mBody+"Movidos:`r`n $log_movidos `r`n"
 $mBody=$mBody+"Desativados:`r`n $log_desativados `r`n"
 $mBody=$mBody+"Andamento geral:`r`n $log `r`n"
 
-#Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
+Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
 
 Log-Finish -LogPath $log -NoExit $True
 Log-Finish -LogPath $log_criados -NoExit $True
