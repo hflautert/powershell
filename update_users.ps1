@@ -16,19 +16,16 @@ $log_desativados="$pasta_de_logs\Usuarios_desativados$data_log.log"
 $csv_oracle="$pasta_de_exp\base_oracle_a.csv"
 $csv_oracle_rd="$pasta_de_exp\base_oracle_rd.csv"
 $total_processados=0
+$total_atualizados=0
 $total_movidos=0
 $total_criados=0
 $total_desativados=0
 
-# Conversão para UTF-8
-$temp_oracle=Get-Content $csv_oracle
-$temp_oracle | Out-File -Encoding "UTF8" $csv_oracle
-$temp_oracle=Get-Content $csv_oracle_rd
-$temp_oracle | Out-File -Encoding "UTF8" $csv_oracle_rd
-
 # Dados email
 $mFrom="no-reply@fimfim.epagri.sc.gov.br"
-$mTo="henrique.lautert@ilhaservice.com.br"
+#$mTo="redes@epagri.sc.gov.br"
+$mTo="hflautert@gmail.com"
+$mCc="henrique.lautert@ilhaservice.com.br"
 $mSubject="Resultado da sincronização Oracle-AD"
 $mBody=""
 
@@ -37,8 +34,13 @@ Log-Start -LogPath $pasta_de_logs -LogName "Usuarios_criados$data_log.log" -Scri
 Log-Start -LogPath $pasta_de_logs -LogName "Usuarios_movidos$data_log.log" -ScriptVersion "1.0"
 Log-Start -LogPath $pasta_de_logs -LogName "Usuarios_desativados$data_log.log" -ScriptVersion "1.0"
 
-$users = Import-Csv -Path $csv_oracle
-If ($?) {
+
+
+If (Test-Path $csv_oracle) {
+    # Conversão para UTF-8
+    $temp_oracle=Get-Content $csv_oracle
+    $temp_oracle | Out-File -Encoding "UTF8" $csv_oracle
+    $users = Import-Csv -Path $csv_oracle
     Log-Write -LogPath $log -LineValue "Arquivo: $csv_oracle carregado com sucesso."
     Log-Write -LogPath $log -LineValue "."
 
@@ -68,7 +70,7 @@ $users | ForEach-Object {
         Log-Write -LogPath $log -LineValue "Usuario encontrado no AD, verificando posição na OU."
         If ($ad_ou -ne $ora_ou) {
             Log-Write -LogPath $log -LineValue "Usuário não está na OU enviada pelo oracle."
-            Log-Write -LogPath $log_movidos -LineValue "Usuário: $fullname Username:"
+            Log-Write -LogPath $log_movidos -LineValue "Usuário: $fullname"
             Log-Write -LogPath $log_movidos -LineValue "Username: $username"
             Log-Write -LogPath $log_movidos -LineValue "Movendo de:$ad_ou."
             Log-Write -LogPath $log_movidos -LineValue "Para:$ora_ou."
@@ -76,8 +78,13 @@ $users | ForEach-Object {
             Log-Write -LogPath $log -LineValue "Movendo de:$ad_ou."
             Log-Write -LogPath $log -LineValue "Para:$ora_ou."
             Get-ADUser $_.SamAccountName | Move-ADObject -TargetPath $ora_ou
-            $total_movidos++
-            Log-Write -LogPath $log -LineValue "Atualização realizada com sucesso."
+            If ($?) {
+                $total_movidos++
+                Log-Write -LogPath $log -LineValue "Usuário movido com sucesso."
+            }
+            Else{
+                Log-Write -LogPath $log -LineValue "Erro ao mover usuário."
+            }
         }
     }
     Else {
@@ -108,19 +115,22 @@ $users | ForEach-Object {
     }
 
     Log-Write -LogPath $log -LineValue "Executando atualização de dados."
+    #Alterado Departament x Description - Devido a visualização no AD e campo do OTRS
     Set-ADUSer -Identity $_.SamAccountName `
                -GivenName $_.GivenName `
                -Surname $_.Surname `
                -EmailAddress $_.EmailAddress `
                -Company $_.Company `
                -Title $_.Title `
-               -Department $_.Department `
-               -Description $_.Description `
+               -Department $_.Description `
+               -Description $_.Department `
                -Fax $_.Fax `
                -OfficePhone $_.OfficePhone `
+               -Enabled $true `
                -Replace @{info=$_.Info; physicalDeliveryOfficeName=$_.physicalDeliveryOfficeName; pager=$_.pager}
     If ($?) {
         Log-Write -LogPath $log -LineValue "Atualização realizada com sucesso."
+        $total_atualizados++
     }
     Else {
         Log-Write -LogPath $log -LineValue "Erro ao atualizar dados."
@@ -135,8 +145,14 @@ Else {
 }
 
 ### INICIA DESATIVAÇÃO DE USUÁRIOS
-$users = Import-Csv -Path $csv_oracle_rd
-If ($?) {
+Log-Write -LogPath $log -LineValue "***"
+Log-Write -LogPath $log -LineValue "Inciando processo de desativação dos usuários."
+Log-Write -LogPath $log -LineValue "."
+If (Test-Path $csv_oracle_rd) {
+    # Conversão para UTF-8
+    $temp_oracle=Get-Content $csv_oracle_rd
+    $temp_oracle | Out-File -Encoding "UTF8" $csv_oracle_rd
+    $users = Import-Csv -Path $csv_oracle_rd
     Log-Write -LogPath $log -LineValue "Arquivo: $csv_oracle_rd carregado com sucesso."
     Log-Write -LogPath $log -LineValue "."
 
@@ -171,10 +187,12 @@ Else {
 
 
 # Compondo email
-$mBody=echo "Total de usuários processados: $total_processados `r`n"
-$mBody=$mBody+"Total de usuários movidos: $total_movidos `r`n"
-$mBody=$mBody+"Total de usuários criados: $total_criados `r`n"
-$mBody=$mBody+"Total de usuários desativados: $total_desativados `r`n"
+$mBody=echo "Usuários processados: $total_processados `r`n"
+$mBody=$mBody+"Usuários atualizados: $total_atualizados `r`n"
+$mBody=$mBody+"`n"
+$mBody=$mBody+"Usuários movidos: $total_movidos `r`n"
+$mBody=$mBody+"Usuários criados: $total_criados `r`n"
+$mBody=$mBody+"Usuários desativados: $total_desativados `r`n"
 $mBody=$mBody+"`n"
 $mBody=$mBody+"Logs:`r`n"
 $mBody=$mBody+"Criados:`r`n $log_criados `r`n"
@@ -182,7 +200,7 @@ $mBody=$mBody+"Movidos:`r`n $log_movidos `r`n"
 $mBody=$mBody+"Desativados:`r`n $log_desativados `r`n"
 $mBody=$mBody+"Andamento geral:`r`n $log `r`n"
 
-#Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Encoding UTF8
+#Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
 
 Log-Finish -LogPath $log -NoExit $True
 Log-Finish -LogPath $log_criados -NoExit $True
@@ -193,3 +211,6 @@ Log-Finish -LogPath $log_desativados -NoExit $True
 # Limpeza de arquivos antigos
 get-childitem $pasta_de_logs | where -FilterScript {$_.LastWriteTime -le [System.DateTime]::Now.AddDays(-7)} | remove-item
 get-childitem $pasta_de_exp | where -FilterScript {$_.LastWriteTime -le [System.DateTime]::Now.AddDays(-7)} | remove-item
+# Renomar para manter histórico
+Move-Item $csv_oracle $pasta_de_exp\base_oracle_a$data_log.csv
+Move-Item $csv_oracle_rd $pasta_de_exp\base_oracle_rd$data_log.csv
