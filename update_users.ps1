@@ -22,9 +22,9 @@ $total_criados=0
 $total_desativados=0
 
 # Dados email
-$mFrom="no-reply@serverx.br"
+$mFrom="no-reply@fimfim.serverx.br"
 $mTo="redes@serverx.br"
-$mCc="henrique.lautert@serverx.br"
+$mCc="henrique.lautert@ilhaservice.com.br"
 $mSubject="Resultado da sincronização Oracle-AD"
 $mBody=""
 
@@ -54,7 +54,7 @@ $users | ForEach-Object {
     $surname=$_.Surname
     $fullname=$_.GivenName+" "+$_.Surname
     $cpf=$_.Info
-    $upn=$_.SamAccountName+"@epagri.sc.gov.br"
+    $upn=$_.SamAccountName+"@serverx.br"
     
     
     Log-Write -LogPath $log -LineValue "Processando usuário:  $fullname."
@@ -201,7 +201,7 @@ If ($total_movidos+$total_criados+$total_desativados -ne 0) {
     $mBody=$mBody+"Desativados:`r`n $log_desativados `r`n"
     $mBody=$mBody+"Andamento geral:`r`n $log `r`n"
     
-    Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
+    Send-MailMessage -SmtpServer smtp.serverx.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
 } 
 Else {
     $mBody=echo "Usuários processados: $total_processados `r`n"
@@ -215,7 +215,7 @@ Else {
     $mBody=$mBody+"Editar o arquivo: \\sabia\AREA2\DEGTI\Sinc_AD\Fontes\Update_users.ps1`r`n"
     $mBody=$mBody+"Comentar linha 218 `r`n"
     # Caso não queira receber email quando não ouverem movidos, criados ou desativados, comentar a linha abaixo.
-    #Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
+    #Send-MailMessage -SmtpServer smtp.serverx.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
 }
 Log-Finish -LogPath $log -NoExit $True
 Log-Finish -LogPath $log_criados -NoExit $True
