@@ -22,9 +22,9 @@ $total_criados=0
 $total_desativados=0
 
 # Dados email
-$mFrom="no-reply@fimfim.epagri.sc.gov.br"
-$mTo="redes@epagri.sc.gov.br"
-$mCc="henrique.lautert@ilhaservice.com.br"
+$mFrom="no-reply@serverx.br"
+$mTo="redes@serverx.br"
+$mCc="henrique.lautert@serverx.br"
 $mSubject="Resultado da sincronização Oracle-AD"
 $mBody=""
 
@@ -42,7 +42,6 @@ If (Test-Path $csv_oracle) {
     $users = Import-Csv -Path $csv_oracle
     Log-Write -LogPath $log -LineValue "Arquivo: $csv_oracle carregado com sucesso."
     Log-Write -LogPath $log -LineValue "."
-
 
 $users | ForEach-Object {
     #Troca ; por , para fazer consulta
@@ -83,6 +82,7 @@ $users | ForEach-Object {
             }
             Else{
                 Log-Write -LogPath $log -LineValue "Erro ao mover usuário."
+                Log-Write -LogPath $log_movidos -LineValue "Erro ao mover usuário."
             }
         }
     }
@@ -110,6 +110,7 @@ $users | ForEach-Object {
         }
         Else {
             Log-Write -LogPath $log -LineValue "Erro ao criar usuário."
+            Log-Write -LogPath $log_criados -LineValue "Erro ao criar usuário."
         }
     }
 
@@ -186,21 +187,36 @@ Else {
 
 
 # Compondo email
-$mBody=echo "Usuários processados: $total_processados `r`n"
-$mBody=$mBody+"Usuários atualizados: $total_atualizados `r`n"
-$mBody=$mBody+"`n"
-$mBody=$mBody+"Usuários movidos: $total_movidos `r`n"
-$mBody=$mBody+"Usuários criados: $total_criados `r`n"
-$mBody=$mBody+"Usuários desativados: $total_desativados `r`n"
-$mBody=$mBody+"`n"
-$mBody=$mBody+"Logs:`r`n"
-$mBody=$mBody+"Criados:`r`n $log_criados `r`n"
-$mBody=$mBody+"Movidos:`r`n $log_movidos `r`n"
-$mBody=$mBody+"Desativados:`r`n $log_desativados `r`n"
-$mBody=$mBody+"Andamento geral:`r`n $log `r`n"
-
-Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
-
+If ($total_movidos+$total_criados+$total_desativados -ne 0) {
+    $mBody=echo "Usuários processados: $total_processados `r`n"
+    $mBody=$mBody+"Usuários atualizados: $total_atualizados `r`n"
+    $mBody=$mBody+"`n"
+    $mBody=$mBody+"Usuários movidos: $total_movidos `r`n"
+    $mBody=$mBody+"Usuários criados: $total_criados `r`n"
+    $mBody=$mBody+"Usuários desativados: $total_desativados `r`n"
+    $mBody=$mBody+"`n"
+    $mBody=$mBody+"Logs:`r`n"
+    $mBody=$mBody+"Criados:`r`n $log_criados `r`n"
+    $mBody=$mBody+"Movidos:`r`n $log_movidos `r`n"
+    $mBody=$mBody+"Desativados:`r`n $log_desativados `r`n"
+    $mBody=$mBody+"Andamento geral:`r`n $log `r`n"
+    
+    Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
+} 
+Else {
+    $mBody=echo "Usuários processados: $total_processados `r`n"
+    $mBody=$mBody+"Usuários atualizados: $total_atualizados `r`n"
+    $mBody=$mBody+"`n"
+    $mBody=$mBody+"Nenhum usuário foi movido, criado ou desativado.`r`n"
+    $mBody=$mBody+"Log:`r`n"
+    $mBody=$mBody+"Andamento geral:`r`n $log `r`n"
+    $mBody=$mBody+"`n"
+    $mBody=$mBody+"Para desabilitar este email:`r`n"
+    $mBody=$mBody+"Editar o arquivo: \\sabia\AREA2\DEGTI\Sinc_AD\Fontes\Update_users.ps1`r`n"
+    $mBody=$mBody+"Comentar linha 218 `r`n"
+    # Caso não queira receber email quando não ouverem movidos, criados ou desativados, comentar a linha abaixo.
+    #Send-MailMessage -SmtpServer smtp.epagri.sc.gov.br -Subject $mSubject -Body $mBody -From $mFrom -To $mTo -Cc $mCc -Encoding UTF8
+}
 Log-Finish -LogPath $log -NoExit $True
 Log-Finish -LogPath $log_criados -NoExit $True
 Log-Finish -LogPath $log_movidos -NoExit $True
@@ -210,6 +226,7 @@ Log-Finish -LogPath $log_desativados -NoExit $True
 # Limpeza de arquivos antigos
 get-childitem $pasta_de_logs | where -FilterScript {$_.LastWriteTime -le [System.DateTime]::Now.AddDays(-7)} | remove-item
 get-childitem $pasta_de_exp | where -FilterScript {$_.LastWriteTime -le [System.DateTime]::Now.AddDays(-7)} | remove-item
+
 # Renomar para manter histórico
 Move-Item $csv_oracle $pasta_de_exp\base_oracle_a$data_log.csv
 Move-Item $csv_oracle_rd $pasta_de_exp\base_oracle_rd$data_log.csv
